@@ -1,0 +1,6 @@
+{
+  "name": "MyShop BD - Bangladesh E-Commerce Platform",
+  "description": "Production-grade e-commerce storefront & admin platform inspired by HT Bazar Bangladesh. Features BDT (৳) currency, bilingual Bengali/English UI, bKash/Nagad/COD checkout, wholesale tiers, flash sales, order tracking, and comprehensive admin controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

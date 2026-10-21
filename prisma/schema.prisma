@@ -1,0 +1,260 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  STAFF
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURN_REQUESTED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+enum PaymentMethod {
+  COD
+  BKASH
+  NAGAD
+  SSLCOMMERZ
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  phone        String
+  role         Role      @default(CUSTOMER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  addresses    Address[]
+  orders       Order[]
+  reviews      Review[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+model Address {
+  id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName      String
+  phone         String
+  division      String
+  district      String
+  thanaArea     String
+  streetAddress String
+  deliveryNotes String?
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  nameBn    String
+  slug      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Brand {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  slug      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id                   String           @id @default(uuid())
+  name                 String
+  nameBn               String
+  slug                 String           @unique
+  description          String
+  descriptionBn        String
+  sku                  String           @unique
+  regularPrice         Float
+  salePrice            Float
+  costPrice            Float?
+  stock                Int              @default(0)
+  images               String[]
+  isFlashSale          Boolean          @default(false)
+  flashSaleEndsAt      DateTime?
+  isWholesaleAvailable Boolean          @default(false)
+  rating               Float            @default(5.0)
+  reviewsCount         Int              @default(0)
+  featured             Boolean          @default(false)
+  isArchived           Boolean          @default(false)
+  categoryId           String?
+  category             Category?        @relation(fields: [categoryId], references: [id])
+  brandId              String?
+  brand                Brand?           @relation(fields: [brandId], references: [id])
+  variants             ProductVariant[]
+  wholesaleTiers       WholesaleTier[]
+  reviews              Review[]
+  orderItems           OrderItem[]
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([sku])
+  @@index([slug])
+}
+
+model ProductVariant {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String
+  priceDelta Float    @default(0)
+  stock      Int      @default(0)
+  sku        String   @unique
+  createdAt  DateTime @default(now())
+}
+
+model WholesaleTier {
+  id                 String   @id @default(uuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  minQty             Int
+  discountPercentage Float
+  pricePerUnit       Float
+  createdAt          DateTime @default(now())
+
+  @@unique([productId, minQty])
+}
+
+model Review {
+  id               String   @id @default(uuid())
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id])
+  userName         String
+  rating           Int
+  comment          String
+  verifiedPurchase Boolean  @default(true)
+  createdAt        DateTime @default(now())
+}
+
+model Order {
+  id               String        @id @default(uuid())
+  orderNumber      String        @unique
+  userId           String?
+  user             User?         @relation(fields: [userId], references: [id])
+  customerName     String
+  customerEmail    String?
+  customerPhone    String
+  shippingAddress  Json
+  items            OrderItem[]
+  subtotal         Float
+  wholesaleSavings Float         @default(0)
+  discount         Float         @default(0)
+  couponCode       String?
+  deliveryFee      Float
+  totalAmount      Float
+  paymentMethod    PaymentMethod
+  paymentStatus    PaymentStatus @default(UNPAID)
+  transactionId    String?       @unique
+  orderStatus      OrderStatus   @default(PENDING)
+  timeline         Json
+  cancellationNote String?
+  returnReason     String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([orderNumber])
+  @@index([customerPhone])
+  @@index([transactionId])
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  productName String
+  variantName String?
+  sku         String
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  image       String
+  createdAt   DateTime @default(now())
+}
+
+model Coupon {
+  id                String       @id @default(uuid())
+  code              String       @unique
+  discountType      DiscountType
+  discountValue     Float
+  minPurchaseAmount Float        @default(0)
+  maxDiscountAmount Float?
+  expiresAt         DateTime
+  isActive          Boolean      @default(true)
+  usageCount        Int          @default(0)
+  createdAt         DateTime     @default(now())
+}
+
+model DeliveryZone {
+  id             String   @id @default(uuid())
+  name           String
+  nameBn         String
+  charge         Float
+  estimatedDays  String
+  estimatedDaysBn String
+  createdAt      DateTime @default(now())
+}
+
+model StoreSettings {
+  id                    String   @id @default("default")
+  storeName             String
+  storeNameBn           String
+  hotline               String
+  email                 String
+  address               String
+  freeDeliveryThreshold Float    @default(2500)
+  bkashMerchantNumber   String
+  nagadMerchantNumber   String
+  announcementText      String
+  announcementTextBn    String
+  updatedAt             DateTime @updatedAt
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  adminEmail String
+  action     String
+  target     String
+  details    String
+  timestamp  DateTime @default(now())
+
+  @@index([adminEmail])
+  @@index([timestamp])
+}
